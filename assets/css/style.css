@@ -1,0 +1,25 @@
+.media-gallery {
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 5px 0;
+}
+
+.media-thumbnail {
+    display: inline-block;
+    margin: 5px;
+    transition: transform 0.2s;
+}
+
+.media-thumbnail:hover {
+    transform: scale(1.05);
+}
+
+.video-preview {
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+}
+
+.video-preview i {
+    text-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
