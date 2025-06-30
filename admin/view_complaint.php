@@ -1,6 +1,6 @@
 <?php
 session_start();
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] != 'admin' && $_SESSION['role'] != 'manager')) {
+if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
     exit();
 }
@@ -22,6 +22,11 @@ if (!$complaint) {
     $_SESSION['error'] = "Complaint not found";
     header('Location: dashboard.php');
     exit();
+}
+
+// Initialize priority if not set
+if (!isset($complaint['priority'])) {
+    $complaint['priority'] = 'normal';
 }
 
 // Get assigned workers
@@ -56,12 +61,27 @@ $media = $media->fetchAll();
 
 <?php include '../includes/header.php'; ?>
 
-<!-- Add these in head section -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.10.5/viewer.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
+<style>
+    .priority-badge {
+        font-size: 0.8rem;
+        padding: 0.35em 0.65em;
+    }
+    .priority-selector {
+        max-width: 200px;
+    }
+</style>
+
 <div class="container">
-    <h1 class="my-4">Complaint #<?= $complaint['id'] ?></h1>
+    <h1 class="my-4">Complaint #<?= $complaint['id'] ?>
+        <?php if ($_SESSION['role'] != 'client'): ?>
+            <span class="badge bg-<?= $complaint['priority'] == 'urgent' ? 'danger' : 'secondary' ?> priority-badge float-end">
+                <?= strtoupper($complaint['priority']) ?> PRIORITY
+            </span>
+        <?php endif; ?>
+    </h1>
     
     <div class="row">
         <!-- Left Column - Complaint Details -->
@@ -83,46 +103,77 @@ $media = $media->fetchAll();
                     <p><strong>Description:</strong><br><?= nl2br(htmlspecialchars($complaint['description'])) ?></p>
                     <p><strong>Created:</strong> <?= date('d M Y H:i', strtotime($complaint['created_at'])) ?></p>
                     
+                    <!-- Priority Management Section - Hidden from clients -->
+                    <?php if ($_SESSION['role'] != 'client'): ?>
+                        <div class="priority-management mt-3 border-top pt-3">
+                            <h5>Priority Control</h5>
+                            <?php if ($_SESSION['role'] == 'admin' || $_SESSION['role'] == 'manager'): ?>
+                                <form method="POST" action="update_priority.php" class="mt-2">
+                                    <input type="hidden" name="complaint_id" value="<?= $complaint['id'] ?>">
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-auto">
+                                            <select name="priority" class="form-select priority-selector">
+                                                <option value="normal" <?= $complaint['priority'] == 'normal' ? 'selected' : '' ?>>Normal Priority</option>
+                                                <option value="urgent" <?= $complaint['priority'] == 'urgent' ? 'selected' : '' ?>>Urgent Priority</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button type="submit" class="btn btn-<?= $complaint['priority'] == 'urgent' ? 'danger' : 'primary' ?>">
+                                                <i class="fas fa-save me-1"></i> Update Priority
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            <?php else: ?>
+                                <div class="alert alert-info mt-2">
+                                    Current priority: <strong><?= strtoupper($complaint['priority']) ?></strong>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
                     <!-- Worker Assignment Form -->
-                    <div class="mt-4 border-top pt-3">
-                        <h5>Assign Workers</h5>
-                        <form method="POST" class="mb-4">
-                            <input type="hidden" name="complaint_id" value="<?= $complaint['id'] ?>">
-                            <div class="mb-3">
-                                <label class="form-label">Select Workers</label>
-                                <select name="worker_id[]" class="form-select" multiple size="5" required>
-                                    <?php foreach ($allWorkers as $worker): ?>
-                                        <option value="<?= $worker['id'] ?>" <?= 
-                                            in_array($worker['id'], $assignedWorkerIds) ? 'selected' : '' 
-                                        ?>>
-                                            <?= htmlspecialchars($worker['full_name']) ?> 
-                                            (<?= $worker['specialization'] ?>)
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <small class="text-muted">Hold Ctrl/Cmd to select multiple workers</small>
-                            </div>
-                            <button type="submit" name="assign_worker" class="btn btn-primary">
-                                <i class="fas fa-save me-1"></i> Update Assignments
-                            </button>
-                        </form>
-                        
-                        <?php if (!empty($assignedWorkerIds)): ?>
-                            <div class="assigned-workers">
-                                <h6>Currently Assigned:</h6>
-                                <ul class="list-group">
-                                    <?php foreach ($allWorkers as $worker): ?>
-                                        <?php if (in_array($worker['id'], $assignedWorkerIds)): ?>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <?= htmlspecialchars($worker['full_name']) ?>
-                                                <span class="badge bg-secondary"><?= $worker['specialization'] ?></span>
-                                            </li>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-                        <?php endif; ?>
-                    </div>
+                    <?php if ($_SESSION['role'] != 'client'): ?>
+                        <div class="mt-4 border-top pt-3">
+                            <h5>Assign Workers</h5>
+                            <form method="POST" class="mb-4">
+                                <input type="hidden" name="complaint_id" value="<?= $complaint['id'] ?>">
+                                <div class="mb-3">
+                                    <label class="form-label">Select Workers</label>
+                                    <select name="worker_id[]" class="form-select" multiple size="5" required>
+                                        <?php foreach ($allWorkers as $worker): ?>
+                                            <option value="<?= $worker['id'] ?>" <?= 
+                                                in_array($worker['id'], $assignedWorkerIds) ? 'selected' : '' 
+                                            ?>>
+                                                <?= htmlspecialchars($worker['full_name']) ?> 
+                                                (<?= $worker['specialization'] ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small class="text-muted">Hold Ctrl/Cmd to select multiple workers</small>
+                                </div>
+                                <button type="submit" name="assign_worker" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i> Update Assignments
+                                </button>
+                            </form>
+                            
+                            <?php if (!empty($assignedWorkerIds)): ?>
+                                <div class="assigned-workers">
+                                    <h6>Currently Assigned:</h6>
+                                    <ul class="list-group">
+                                        <?php foreach ($allWorkers as $worker): ?>
+                                            <?php if (in_array($worker['id'], $assignedWorkerIds)): ?>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    <?= htmlspecialchars($worker['full_name']) ?>
+                                                    <span class="badge bg-secondary"><?= $worker['specialization'] ?></span>
+                                                </li>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                     
                     <!-- Media Attachments Section -->
                     <div class="mt-4 border-top pt-3">
@@ -223,7 +274,6 @@ $media = $media->fetchAll();
     </div>
 </div>
 
-<!-- JavaScript Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.10.5/viewer.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
