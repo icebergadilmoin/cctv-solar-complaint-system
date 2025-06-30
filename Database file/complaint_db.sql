@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 30, 2025 at 06:04 PM
+-- Generation Time: Jun 30, 2025 at 07:12 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,20 @@ SET time_zone = "+00:00";
 --
 -- Database: `complaint_db`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `activity_logs`
+--
+
+CREATE TABLE `activity_logs` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `action` varchar(50) NOT NULL,
+  `details` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -71,15 +85,18 @@ CREATE TABLE `complaints` (
   `type` enum('CCTV','Solar','Other') NOT NULL,
   `status` enum('Pending','Assigned','In Progress','Resolved') DEFAULT 'Pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `version` int(11) DEFAULT 1
+  `version` int(11) DEFAULT 1,
+  `priority` varchar(10) DEFAULT 'normal',
+  `prioritized_by` int(11) DEFAULT NULL,
+  `priority_updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `complaints`
 --
 
-INSERT INTO `complaints` (`id`, `client_id`, `title`, `description`, `type`, `status`, `created_at`, `version`) VALUES
-(1, 2, 'camera number 4 is not working', 'dha phase 4 house number 59dd my camera number 4 is not working', 'CCTV', 'In Progress', '2025-06-27 20:03:58', 1);
+INSERT INTO `complaints` (`id`, `client_id`, `title`, `description`, `type`, `status`, `created_at`, `version`, `priority`, `prioritized_by`, `priority_updated_at`) VALUES
+(1, 2, 'camera number 4 is not working', 'dha phase 4 house number 59dd my camera number 4 is not working', 'CCTV', 'In Progress', '2025-06-27 20:03:58', 1, 'normal', 1, '2025-06-30 17:10:29');
 
 -- --------------------------------------------------------
 
@@ -202,6 +219,13 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 
 --
+-- Indexes for table `activity_logs`
+--
+ALTER TABLE `activity_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
 -- Indexes for table `assignments`
 --
 ALTER TABLE `assignments`
@@ -215,7 +239,8 @@ ALTER TABLE `assignments`
 --
 ALTER TABLE `complaints`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `client_id` (`client_id`);
+  ADD KEY `client_id` (`client_id`),
+  ADD KEY `prioritized_by` (`prioritized_by`);
 
 --
 -- Indexes for table `complaint_media`
@@ -259,6 +284,12 @@ ALTER TABLE `users`
 --
 -- AUTO_INCREMENT for dumped tables
 --
+
+--
+-- AUTO_INCREMENT for table `activity_logs`
+--
+ALTER TABLE `activity_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `assignments`
@@ -307,6 +338,12 @@ ALTER TABLE `users`
 --
 
 --
+-- Constraints for table `activity_logs`
+--
+ALTER TABLE `activity_logs`
+  ADD CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+--
 -- Constraints for table `assignments`
 --
 ALTER TABLE `assignments`
@@ -318,7 +355,8 @@ ALTER TABLE `assignments`
 -- Constraints for table `complaints`
 --
 ALTER TABLE `complaints`
-  ADD CONSTRAINT `complaints_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `users` (`id`);
+  ADD CONSTRAINT `complaints_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `complaints_ibfk_2` FOREIGN KEY (`prioritized_by`) REFERENCES `users` (`id`);
 
 --
 -- Constraints for table `complaint_media`
